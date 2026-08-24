@@ -1,0 +1,47 @@
+name: python-runner-check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  before:
+    name: baseline (no runner sidecar)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: restore upstream compose
+        run: |
+          git checkout HEAD -- docker-compose.yml .env.example 2>/dev/null || true
+          curl -sSL -o docker-compose.yml https://raw.githubusercontent.com/n8n-io/self-hosted-ai-starter-kit/main/docker-compose.yml
+          curl -sSL -o .env https://raw.githubusercontent.com/n8n-io/self-hosted-ai-starter-kit/main/.env.example
+      - name: start postgres + n8n only
+        run: |
+          docker compose up -d n8n
+          sleep 45
+          docker compose ps
+      - name: run python workflow
+        continue-on-error: true
+        run: |
+          docker compose cp ci/py-test.json n8n:/tmp/py-test.json || docker cp ci/py-test.json n8n:/tmp/py-test.json
+          docker compose exec -T n8n n8n execute --file /tmp/py-test.json 2>&1 | tail -40
+
+  after:
+    name: patched (runner sidecar)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - name: start stack
+        run: |
+          docker compose up -d n8n n8n-runners
+          sleep 60
+          docker compose ps
+      - name: n8n version
+        run: docker compose exec -T n8n n8n --version
+      - name: run python workflow
+        run: |
+          docker cp ci/py-test.json n8n:/tmp/py-test.json
+          docker compose exec -T n8n n8n execute --file /tmp/py-test.json 2>&1 | tail -40
+      - name: runner logs
+        if: always()
+        run: docker logs n8n-runners 2>&1 | tail -30
