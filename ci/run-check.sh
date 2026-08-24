@@ -30,7 +30,7 @@ echo "workflow id=$ID"
 [ -z "$ID" ] && { head -c 500 /tmp/wf.json; exit 1; }
 
 echo "--- run workflow"
-jq -n --argjson wf "$WF" --arg id "$ID" '{workflowData: ($wf + {id: $id}), destinationNode: "Code", runData: {}}' > /tmp/run.json
+jq -n --argjson wf "$WF" --arg id "$ID" '{workflowData: ($wf + {id: $id}), destinationNode: {nodeName: "Code", mode: "inclusive"}}' > /tmp/run.json
 curl -s -b "$J" -X POST "$BASE/rest/workflows/$ID/run" -H 'content-type: application/json' \
   --data-binary @/tmp/run.json -o /tmp/exec.json -w 'http=%{http_code}\n'
 EX=$(jq -r '.data.executionId // empty' /tmp/exec.json)
