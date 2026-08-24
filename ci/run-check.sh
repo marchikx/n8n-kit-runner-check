@@ -57,3 +57,9 @@ if jq -e . /tmp/inner.json >/dev/null 2>&1; then
 else
   head -c 600 /tmp/res.json
 fi
+
+echo "message search in raw execution data:"
+grep -o 'Python runner unavailable[^"]*' /tmp/res.json | head -2
+grep -o '"python_ran[^,]*' /tmp/res.json | head -2
+grep -o 'two_plus_two[^,]*' /tmp/res.json | head -2
+true
