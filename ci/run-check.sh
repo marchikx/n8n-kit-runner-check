@@ -46,8 +46,14 @@ for i in $(seq 1 30); do
   sleep 3
 done
 echo "status=$st finished=$fin"
-echo "code node output:"
-jq -r '.data.data.resultData.runData.Code // "no run data for Code node"' /tmp/res.json | head -c 1200
-echo
-echo "error:"
-jq -r '.data.data.resultData.error.message // "none"' /tmp/res.json
+echo "raw data (parsed):"
+jq -r '.data.data' /tmp/res.json > /tmp/inner.json 2>/dev/null || true
+if jq -e . /tmp/inner.json >/dev/null 2>&1; then
+  echo "code node error:"
+  jq -r '.resultData.error.message // .resultData.runData.Code[0].error.message // "none"' /tmp/inner.json
+  echo "code node output:"
+  jq -c '.resultData.runData.Code[0].data.main[0] // "no output"' /tmp/inner.json | head -c 600
+  echo
+else
+  head -c 600 /tmp/res.json
+fi
